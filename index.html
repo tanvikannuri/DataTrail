@@ -23,12 +23,11 @@
 
   .card { background:var(--card); border-radius:14px; padding:20px; border: 1px solid var(--border); margin-top:20px; }
   .status { color:var(--muted); margin-top:16px; font-weight: 500; }
-  .error { color:#fca5a5; background: rgba(239,68,68,0.1); padding: 12px; border-radius: 8px; border: 1px solid var(--danger); }
   
   .head { display:flex; gap:20px; align-items:center; flex-wrap: wrap; }
   .badge { width:80px; height:80px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:44px; font-weight:800; color:#fff; flex:none; }
   .g-A { background:#16a34a; } .g-B { background:#65a30d; } .g-C { background:#ca8a04; }
-  .g-D { background:#ea580c; } .g-F { background:#dc2626; } .g-q { background:#475569; }
+  .g-D { background:#ea580c; }
   
   h2 { margin:0 0 6px; font-size:22px; }
   h3 { margin:0 0 12px; font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; display: flex; align-items: center; gap: 8px; }
@@ -81,20 +80,17 @@
 
 <script>
 const getElem = (id) => document.getElementById(id);
-
 function el(tag, props = {}, ...kids) {
   const e = document.createElement(tag);
   Object.assign(e, props);
   kids.flat().filter(Boolean).forEach((k) => e.append(k));
   return e;
 }
-
 function sumChars(str) {
   let sum = 0;
   for (let i = 0; i < str.length; i++) sum += str.charCodeAt(i);
   return sum;
 }
-
 async function executeAudit(urlInput, isSample = false) {
   getElem("report").replaceChildren();
   getElem("scan").disabled = getElem("sample").disabled = true;
@@ -104,7 +100,6 @@ async function executeAudit(urlInput, isSample = false) {
   const rawUrl = isSample ? "https://www.spotify.com" : (urlInput || "example.com");
   const domain = rawUrl.replace("https://", "").replace("http://", "").split("/")[0];
 
-  // Try local backend first if available
   try {
     const res = await fetch("http://127.0.0.1:8000" + (isSample ? "/sample" : "/scan"), {
       method: isSample ? "GET" : "POST",
@@ -118,12 +113,9 @@ async function executeAudit(urlInput, isSample = false) {
       getElem("scan").disabled = getElem("sample").disabled = false;
       return;
     }
-  } catch (e) {
-    // Fallback to client-side TinyFish simulation for GitHub Pages
-  }
+  } catch (e) {}
 
   await new Promise(r => setTimeout(r, 1200));
-  
   const hashVal = sumChars(domain);
   const score = isSample ? 68 : (45 + (hashVal % 45));
   const grade = score >= 85 ? "A" : (score >= 75 ? "B" : (score >= 60 ? "C" : "D"));
@@ -162,7 +154,6 @@ function render(d) {
   const root = getElem("report");
   const a = d.analysis;
   if (!a) return;
-
   const grade = a.grade || "B";
   const score = a.score != null ? a.score : 75;
 
@@ -198,7 +189,6 @@ function render(d) {
 
   const trackers = d.tracker_findings || [];
   const grid = el("div", { className: "dashboard-grid" });
-  
   grid.append(el("div", { className: "card", style: "margin-top:0;" },
     el("h3", {}, "🌐 Live HAR Request Inspector (TinyFish)"),
     el("div", { style: "overflow-x: auto; max-height: 220px;" },
@@ -213,7 +203,6 @@ function render(d) {
       )
     )
   ));
-
   grid.append(el("div", { className: "card", style: "margin-top:0;" },
     el("h3", {}, "⚠️ Findings Summary"),
     el("ul", {}, 
@@ -223,55 +212,6 @@ function render(d) {
     )
   ));
   root.append(grid);
-
-  root.append(el("div", { className: "card" },
-    el("h3", {}, "⏱️ Consent Interaction Timeline"),
-    el("div", { className: "timeline" },
-      el("div", { className: "t-step" }, el("div", { className: "t-box" }, "First Visit"), el("div", { className: "t-time" }, "0:00")),
-      el("div", { className: "t-arrow" }, "⋯"),
-      el("div", { className: "t-step" }, el("div", { className: "t-box" }, "Banner Shown"), el("div", { className: "t-time" }, "0:05")),
-      el("div", { className: "t-arrow" }, "⋯"),
-      el("div", { className: "t-step" }, el("div", { className: "t-box" }, "Consent Given"), el("div", { className: "t-time" }, "0:10")),
-      el("div", { className: "t-arrow" }, "⋯"),
-      el("div", { className: "t-step" }, el("div", { className: "t-box" }, "Tracking Active"), el("div", { className: "t-time" }, "0:12"))
-    )
-  ));
-
-  const parties = [...new Set(trackers.map((t) => t.tracker || t.domain))];
-  root.append(el("div", { className: "card" },
-    el("h3", {}, "🗺️ Data Journey Map"),
-    el("div", { className: "journey" },
-      el("div", { className: "node" }, "👤 You"),
-      el("div", { className: "arrow" }, "→"),
-      el("div", { className: "node site" }, d.site_name || "Target Website"),
-      parties.length ? el("div", { className: "arrow" }, "→") : "",
-      parties.length ? el("div", { className: "third" }, parties.map((p) => el("div", { className: "node" }, p))) : ""
-    )
-  ));
-
-  root.append(el("div", { className: "card" },
-    el("h3", {}, "🗑️ Automated Deletion Request Workflow"),
-    el("div", { className: "deletion-grid" },
-      el("div", { className: "d-card" },
-        el("b", { style: "color: var(--success);" }, "✓ 1. Verify Identity"),
-        el("p", { style: "font-size: 13px; color: var(--text); margin: 6px 0;" }, "User profile verified against active session."),
-        el("span", { style: "font-size: 12px; color: var(--muted);" }, "Identity token matched securely.")
-      ),
-      el("div", { className: "d-card" },
-        el("b", { style: "color: var(--warning);" }, "✓ 2. Formulate Legal Request"),
-        el("p", { style: "font-size: 13px; color: var(--text); margin: 6px 0;" }, "GDPR Article 17 / CCPA Deletion Notice prepared."),
-        el("span", { style: "font-size: 12px; color: var(--muted);" }, "Automated legal template ready.")
-      ),
-      el("div", { className: "d-card" },
-        el("b", { style: "color: var(--accent);" }, "✓ 3. Dispatch & Confirm"),
-        el("p", { style: "font-size: 13px; color: var(--text); margin: 6px 0;" }, "Target Privacy Email: privacy@target.com"),
-        el("button", { 
-          style: "margin-top: 6px; padding: 6px 12px; font-size: 12px; width: 100%; cursor: pointer;", 
-          onclick: (e) => { e.target.textContent = "✓ Request Dispatched!"; e.target.style.background = "#10b981"; } 
-        }, "Send Deletion Email")
-      )
-    )
-  ));
 }
 
 getElem("scan").onclick = () => {
